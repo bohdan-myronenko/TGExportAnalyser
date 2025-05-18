@@ -3,8 +3,15 @@ import shutil
 import sys
 import argparse
 import functools
-
 import whisper
+
+_model_cache = {}
+
+def get_model(model_size: str):
+    if model_size not in _model_cache:
+        whisper.torch.load = functools.partial(whisper.torch.load, weights_only=True)
+        _model_cache[model_size] = whisper.load_model(model_size, device="cuda")
+    return _model_cache[model_size]
 
 
 def transcribe_audio(
@@ -32,9 +39,8 @@ def transcribe_audio(
             "or `conda install -c conda-forge ffmpeg`) and retry."
         )
 
-    whisper.torch.load = functools.partial(whisper.torch.load, weights_only=True)
     # Load Whisper model
-    model = whisper.load_model(model_size, device="cuda")
+    model = get_model(model_size)
 
     # Prepare audio
     audio = whisper.load_audio(filepath)

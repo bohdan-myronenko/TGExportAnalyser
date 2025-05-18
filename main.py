@@ -11,6 +11,17 @@ import ffmpeg
 import shutil
 import time
 from joblib.externals.loky.process_executor import TerminatedWorkerError
+from audio_transcriptor import get_model
+
+worker_model = None
+
+def transcribe_audio_worker(filepath, model_size, language):
+    global worker_model
+    if worker_model is None:
+        worker_model = get_model(model_size)
+    from audio_transcriptor import transcribe_audio
+    return transcribe_audio(filepath, model_size, language)
+
 
 def analyse_voice_msg(
         filepath: str, 
@@ -31,13 +42,16 @@ def analyse_voice_msg(
             print("Chunks:", chunks)
             
             max_retries = 3
+            max_jobs = 6
             attempt = 0
 
             while attempt < max_retries:
                 if not len(chunks) == 0:
                     try:
-                        transcriptions = Parallel(n_jobs=len(chunks))(
-                            delayed(transcribe_audio)(chunk, model_size, language)
+                        transcriptions = Parallel(
+                            n_jobs = len(chunks) if (len(chunks) < max_jobs) else max_jobs
+                        )(
+                            delayed(transcribe_audio_worker)(chunk, model_size, language)
                             for chunk in chunks
                         )
                         break
