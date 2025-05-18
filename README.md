@@ -13,7 +13,7 @@ TGExportAnalyser is a tool designed to analyze and process exported data from Te
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/TGExportAnalyser.git
+git clone https://github.com/bohdan-myronenko/TGExportAnalyser.git
 cd TGExportAnalyser
 pip install -r requirements.txt
 ```
