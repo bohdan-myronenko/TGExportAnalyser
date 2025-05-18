@@ -10,7 +10,7 @@ import subprocess
 import ffmpeg
 import shutil
 import time
-
+from joblib.externals.loky.process_executor import TerminatedWorkerError
 
 def analyse_voice_msg(
         filepath: str, 
@@ -30,11 +30,27 @@ def analyse_voice_msg(
             chunks = split.split_into_chunks(filepath, output_dir, chunk_length, min_length)
             print("Chunks:", chunks)
             
-            if not len(chunks) == 0:
-                transcriptions = Parallel(n_jobs=len(chunks))(
-                    delayed(transcribe_audio)(chunk, model_size, language)
-                    for chunk in chunks
-                )
+            max_retries = 3
+            attempt = 0
+
+            while attempt < max_retries:
+                if not len(chunks) == 0:
+                    try:
+                        transcriptions = Parallel(n_jobs=len(chunks))(
+                            delayed(transcribe_audio)(chunk, model_size, language)
+                            for chunk in chunks
+                        )
+                        break
+                    except TerminatedWorkerError as e:
+                        attempt += 1
+                        print(f"TerminatedWorkerError (attempt {attempt}/{max_retries}): {e}")
+                        if attempt == max_retries:
+                            print("Max retries reached. Skipping this file.")
+                            transcriptions = [f"Ошибка {e}"]
+                    except Exception as e:
+                        print(f"Unexpected error during parallel transcription: {e}")
+                        transcriptions = []
+                        break
             else:
                 transcriptions = []
 
@@ -52,8 +68,8 @@ def main():
     start_time = time.time()
     
     # Настройки:
-    directory = "input/ChatExport_2025-05-15/"
-    transcription_model = "base"
+    directory = "input/ChatExport_2024/"
+    transcription_model = "tiny"
 
     # Загрузка JSON
     with open(directory + "result.json", encoding="utf-8") as f:
@@ -70,7 +86,7 @@ def main():
         axis=1
     )
 
-    df.to_csv("transcribed.csv")
+    df.to_csv(f"transcribed_{directory}.csv")
     print(df.head())
     print(f"Time taken to process {directory}: {time.time() - start_time}")
 

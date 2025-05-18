@@ -40,7 +40,6 @@ def transcribe_audio(
     audio = whisper.load_audio(filepath)
     audio = whisper.pad_or_trim(audio)
     mel = whisper.log_mel_spectrogram(audio, n_mels=model.dims.n_mels).to(model.device)
-    mel = mel.to(model.device)
 
     # Force the chosen language
     options = whisper.DecodingOptions(language=language)
